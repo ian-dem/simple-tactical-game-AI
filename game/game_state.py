@@ -28,9 +28,13 @@ class GameState:
         for dx in range(-unit.move_range, unit.move_range + 1):
             for dy in range(-unit.move_range, unit.move_range + 1):
                 nx, ny = unit.x + dx, unit.y + dy
-                if self.in_bounds(nx, ny) and self.get_unit_at(nx, ny) is None:
-                    if abs(dx) + abs(dy) <= unit.move_range:
-                        moves.append((nx, ny))
+                if not self.in_bounds(nx, ny):
+                    continue
+                if abs(dx) + abs(dy) > unit.move_range:
+                    continue
+                if self.get_unit_at(nx, ny) is not None:
+                    continue  
+                moves.append((nx, ny))
         return moves
 
     def get_attackable_units(self, unit):

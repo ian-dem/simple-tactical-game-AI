@@ -8,8 +8,10 @@ COLORS = {
     "ENEMY": (255, 100, 100),
     "HIGHLIGHT_MOVE": (100, 200, 100),
     "HIGHLIGHT_ATTACK": (200, 100, 100),
+    "SWORD": (150, 180, 255),
+    "AXE":   (255, 150, 150),
+    "SPEAR": (150, 255, 150),
 }
-
 
 
 
@@ -58,15 +60,51 @@ class Renderer:
         for u in self.state.units:
             if not u.is_alive():
                 continue
+
+            # Team-colored body
             color = COLORS["PLAYER"] if u.team == "PLAYER" else COLORS["ENEMY"]
             rect = pygame.Rect(u.x*TILE_SIZE+8, u.y*TILE_SIZE+8, TILE_SIZE-16, TILE_SIZE-16)
             pygame.draw.rect(self.screen, color, rect)
 
+            # Class icon overlay
+            self.draw_unit_icon(u, rect)
+
+            # HP text
             hp_text = font.render(str(u.hp), True, (255,255,255))
-            self.screen.blit(hp_text, (u.x*TILE_SIZE+20, u.y*TILE_SIZE+20))
+            self.screen.blit(hp_text, (u.x*TILE_SIZE+8, u.y*TILE_SIZE+8))
+
 
         turn_text = font.render(f"Turn: {self.state.current_team}", True, (255,255,0))
         self.screen.blit(turn_text, (10, 10))
 
 
         pygame.display.flip()
+
+    def draw_unit_icon(self, unit, rect):
+        cx = rect.centerx
+        cy = rect.centery
+        color = COLORS[unit.class_type.name]
+
+        # SWORD: two crossing lines
+        if unit.class_type.name == "SWORD":
+            pygame.draw.line(self.screen, color, (cx-10, cy-10), (cx+10, cy+10), 3)
+            pygame.draw.line(self.screen, color, (cx+10, cy-10), (cx-10, cy+10), 3)
+
+        # AXE: handle + blade
+        elif unit.class_type.name == "AXE":
+            # handle
+            pygame.draw.line(self.screen, color, (cx-8, cy+10), (cx+8, cy-10), 4)
+            # blade
+            pygame.draw.rect(self.screen, color, (cx+2, cy-14, 10, 12))
+
+        # SPEAR: vertical shaft + triangle tip
+        elif unit.class_type.name == "SPEAR":
+            pygame.draw.line(self.screen, color, (cx, cy+12), (cx, cy-12), 4)
+            pygame.draw.polygon(self.screen, color, [
+                (cx, cy-18),
+                (cx-6, cy-8),
+                (cx+6, cy-8)
+            ])
+
+
+
