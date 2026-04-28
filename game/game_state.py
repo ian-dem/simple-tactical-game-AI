@@ -1,6 +1,9 @@
+# should probably refactor this into smaller pieces at some point because it keeps getting bigger >>>
 import copy
-from game.unit import Unit, ADVANTAGE
+import random
+from game.unit import Unit, ADVANTAGE, UnitClass
 from game.actions import Action
+from collections import deque
 
 class GameState:
     def __init__(self, width=8, height=8):
@@ -32,21 +35,40 @@ class GameState:
 
 
     def get_legal_moves(self, unit):
-        """Return list of (x, y) tiles the unit can move to."""
-        moves = []
-        for dx in range(-unit.move_range, unit.move_range + 1):
-            for dy in range(-unit.move_range, unit.move_range + 1):
-                nx, ny = unit.x + dx, unit.y + dy
+        start = (unit.x, unit.y)
+        max_range = unit.move_range
+
+        visited = set([start])
+        queue = deque([(start, 0)])
+        legal = []
+
+        while queue:
+            (x, y), dist = queue.popleft()
+
+            if dist > 0:
+                legal.append((x, y))
+
+            if dist == max_range:
+                continue
+
+            for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+                nx, ny = x + dx, y + dy
+
                 if not self.in_bounds(nx, ny):
                     continue
-                if abs(dx) + abs(dy) > unit.move_range:
-                    continue
-                if self.get_unit_at(nx, ny) is not None:
-                    continue  
+
                 if self.is_obstacle(nx, ny):
                     continue
-                moves.append((nx, ny))
-        return moves
+
+                occupant = self.get_unit_at(nx, ny)
+                if occupant is not None and occupant != unit:
+                    continue
+
+                if (nx, ny) not in visited:
+                    visited.add((nx, ny))
+                    queue.append(((nx, ny), dist + 1))
+
+        return legal
 
     def get_attackable_units(self, unit):
         """Return list of enemy units in attack range."""
@@ -70,7 +92,10 @@ class GameState:
             modifier = 0.75
 
         damage = int(attacker.strength * modifier)
-        defender.hp -= damage
+        counter_damage = int(0.8 * defender.strength / modifier)
+        defender.hp = max(0, defender.hp - damage)
+        attacker.hp = max(0, attacker.hp - counter_damage)
+        
 
     def clone(self):
         return copy.deepcopy(self)
@@ -168,3 +193,125 @@ class GameState:
         if enemy_alive and not player_alive:
             return "ENEMY"
         return None
+
+
+# game start function 
+def generate_initial_gamestate(gs, width=10, height=10, 
+                               num_player_units=3, num_enemy_units=3,
+                               obstacle_density=0.15,
+                               HP_RANGE = (8, 16), STR_RANGE = (3, 7),
+                               seed=None 
+                               ):
+    if seed is not None:
+        random.seed(seed)
+
+    # function to check if map has no blocked regions
+    def is_map_fully_connected(gs, width, height):
+        # Find a starting walkable tile
+        start = None
+        for x in range(width):
+            for y in range(height):
+                if not gs.is_obstacle(x, y):
+                    start = (x, y)
+                    break
+            if start:
+                break
+
+        if not start:
+            return False  # map is all obstacles
+
+        # BFS floodfill
+        visited = set([start])
+        queue = deque([start])
+
+        while queue:
+            x, y = queue.popleft()
+            for dx, dy in [(1,0),(-1,0),(0,1),(0,-1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height:
+                    if not gs.is_obstacle(nx, ny) and (nx, ny) not in visited:
+                        visited.add((nx, ny))
+                        queue.append((nx, ny))
+
+        # Count walkable tiles
+        total_walkable = sum(
+            1 for x in range(width) for y in range(height)
+            if not gs.is_obstacle(x, y)
+        )
+
+        return len(visited) == total_walkable
+
+
+
+    # spawn regions
+    player_cols = {0, 1}
+    enemy_cols  = {width-1, width-2}
+
+
+    # generate obstacles check if valid, reroll if not
+    while True: 
+        for x in range(width):
+            for y in range(height):
+                if x in player_cols or x in enemy_cols:
+                    continue  # don't block spawn zones
+                if random.random() < obstacle_density:
+                    gs.add_obstacle(x, y)
+            
+        if is_map_fully_connected(gs, width, height):
+            break
+
+    
+    # find empty tile
+    def random_empty_tile(valid_cols):
+        while True:
+            x = random.choice(list(valid_cols))
+            y = random.randrange(height)
+            if gs.get_unit_at(x, y) is None and not gs.is_obstacle(x, y):
+                return x, y
+
+    # stat generator for units 
+    def random_stats():
+        hp = random.randint(*HP_RANGE)
+        strength = random.randint(*STR_RANGE)
+        return hp, strength
+
+    # spawn player units
+    player_units = []
+    for _ in range(num_player_units):
+        class_type = random.choice(list(UnitClass))
+        hp, strength = random_stats()
+        unit = Unit("PLAYER", class_type, hp=hp, strength=strength)
+        x, y = random_empty_tile(player_cols)
+        gs.add_unit(unit, x, y)
+        player_units.append(unit)
+
+    # spawn enemy units
+    enemy_units = []
+    for _ in range(num_enemy_units):
+        class_type = random.choice(list(UnitClass))
+        hp, strength = random_stats()
+        unit = Unit("ENEMY", class_type, hp=hp, strength=strength)
+        x, y = random_empty_tile(enemy_cols)
+        gs.add_unit(unit, x, y)
+        enemy_units.append(unit)
+
+
+    # balancing lazyish way
+    total_player_hp = sum(u.hp for u in player_units)
+    total_player_str = sum(u.strength for u in player_units)
+
+    total_enemy_hp = sum(u.hp for u in enemy_units)
+    total_enemy_str = sum(u.strength for u in enemy_units)
+
+    # Scale enemy stats proportionally
+    hp_scale = total_player_hp / max(1, total_enemy_hp)
+    str_scale = total_player_str / max(1, total_enemy_str)
+
+    for u in enemy_units:
+        u.hp = max(1, int(u.hp * hp_scale))
+        u.strength = max(1, int(u.strength * str_scale))
+
+
+    return gs
+
+    

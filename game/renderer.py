@@ -12,8 +12,8 @@ COLORS = {
     "HIGHLIGHT_MOVE": (100, 200, 100),
     "HIGHLIGHT_ATTACK": (200, 100, 100),
     "SWORD": (150, 180, 255),
-    "AXE":   (255, 150, 150),
-    "SPEAR": (150, 255, 150),
+    "AXE":   (150, 180, 255),
+    "SPEAR": (150, 180, 255),
 }
 
 
@@ -104,7 +104,7 @@ class Renderer:
             sy = action.unit.y * TILE_SIZE + TILE_SIZE // 2
             ex = action.move_to[0] * TILE_SIZE + TILE_SIZE // 2
             ey = action.move_to[1] * TILE_SIZE + TILE_SIZE // 2
-            pygame.draw.line(self.screen, (255, 255, 0), (sx, sy), (ex, ey), 4)
+            pygame.draw.line(self.screen, (255, 255, 0), (sx, sy), (ex, ey), 8)
 
         # Draw attack highlight
         if action.attack_target_id is not None:

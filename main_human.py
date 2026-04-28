@@ -1,21 +1,29 @@
 import pygame
-from game.game_state import GameState
+from game.game_state import GameState, generate_initial_gamestate
 from game.unit import Unit, UnitClass
 from game.renderer import Renderer
 from game.ai_simple import simple_enemy_turn
 
+TILE_SIZE = 64
+
 def main():
+    pygame.init()
     gs = GameState()
-
-    # manual add units for now
-    gs.add_unit(Unit("PLAYER", UnitClass.SWORD), 1, 1)
-    gs.add_unit(Unit("ENEMY", UnitClass.AXE), 5, 5)
-    gs.add_unit(Unit("PLAYER", UnitClass.SWORD), 1, 3)
-    gs.add_unit(Unit("ENEMY", UnitClass.AXE), 3, 5)
-
+    generate_initial_gamestate(gs, width=10, height=10)
     renderer = Renderer(gs)
 
-    acted_units = set()
+    '''
+    # add units for now 
+    gs.add_unit(Unit("PLAYER", UnitClass.SWORD), 1, 1)
+    gs.add_unit(Unit("ENEMY", UnitClass.AXE), 5, 5)
+    gs.add_unit(Unit("PLAYER", UnitClass.SPEAR), 1, 3)
+    gs.add_unit(Unit("ENEMY", UnitClass.SWORD), 3, 5)
+
+    # add obstacles 
+    for x in range(0, 6):
+        gs.add_obstacle(x, 4)
+    '''
+    clock = pygame.time.Clock()
 
     turn_state = "SELECT"  # SELECT then MOVE then ATTACK
     selected_unit = None
@@ -26,14 +34,19 @@ def main():
 
     running = True
     while running:
+        clock.tick(60)
+        
         for event in pygame.event.get():
-            
             if event.type == pygame.QUIT:
                 running = False
 
+            # Only process mouse input on PLAYER turn
+            if gs.current_team != "PLAYER":
+                continue
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = pygame.mouse.get_pos()
-                gx, gy = mx // 64, my // 64
+                gx, gy = mx // TILE_SIZE, my // TILE_SIZE
 
                 # -------------------------
                 # SELECT PHASE
@@ -43,6 +56,7 @@ def main():
                     if u and u.team == "PLAYER" and u not in acted_units:
                         selected_unit = u
                         move_tiles = gs.get_legal_moves(u)
+                        attack_targets = []
                         turn_state = "MOVE"
                     continue
 
@@ -50,7 +64,7 @@ def main():
                 # MOVE PHASE
                 # -------------------------
                 if turn_state == "MOVE":
-                    # if player clicks the unit again, cancel and end turn for that unit
+                    # click unit again -> cancel and mark as acted
                     if gx == selected_unit.x and gy == selected_unit.y:
                         acted_units.add(selected_unit)
                         selected_unit = None
@@ -59,11 +73,17 @@ def main():
                         turn_state = "SELECT"
                         continue
 
-                    # if clicked a legal move tile move
+                    # clicked a legal move tile
                     if (gx, gy) in move_tiles:
                         old_pos = (selected_unit.x, selected_unit.y)
                         gs.apply_move(selected_unit, gx, gy)
                         renderer.animate_slide(selected_unit, old_pos, (gx, gy))
+
+                        while renderer.update_animations():
+                            renderer.draw(move_tiles, [(t.x, t.y) for t in attack_targets])
+                            pygame.display.flip()
+                            clock.tick(60)
+
                         attack_targets = gs.get_attackable_units(selected_unit)
                         move_tiles = []
                         turn_state = "ATTACK"
@@ -72,15 +92,15 @@ def main():
                     # otherwise cancel selection
                     selected_unit = None
                     move_tiles = []
+                    attack_targets = []
                     turn_state = "SELECT"
                     continue
 
                 # -------------------------
                 # ATTACK PHASE
                 # -------------------------
-                if turn_state == "ATTACK" and attack_targets:
-                    # if player clicks the unit end turn
-                    
+                if turn_state == "ATTACK":
+                    # click unit -> skip attack, end unit turn
                     if gx == selected_unit.x and gy == selected_unit.y:
                         acted_units.add(selected_unit)
                         selected_unit = None
@@ -89,9 +109,20 @@ def main():
                         turn_state = "SELECT"
                         continue
 
-                    # Player clicks an attackable enemy, attack then end unit turn
                     target = gs.get_unit_at(gx, gy)
                     if target in attack_targets:
+                        # simple flash like minimax
+                        for _ in range(4):
+                            renderer.draw(move_tiles, [(t.x, t.y) for t in attack_targets])
+                            pygame.draw.rect(
+                                renderer.screen,
+                                (255, 0, 0),
+                                pygame.Rect(target.x*TILE_SIZE, target.y*TILE_SIZE, TILE_SIZE, TILE_SIZE),
+                                4
+                            )
+                            pygame.display.flip()
+                            pygame.time.delay(120)
+
                         gs.apply_attack(selected_unit, target)
                         acted_units.add(selected_unit)
                         selected_unit = None
@@ -100,8 +131,7 @@ def main():
                         turn_state = "SELECT"
                         continue
 
-                # Otherwise skip attack
-                else:
+                    # clicked elsewhere -> skip attack
                     acted_units.add(selected_unit)
                     selected_unit = None
                     move_tiles = []
@@ -109,18 +139,50 @@ def main():
                     turn_state = "SELECT"
                     continue
 
-        # After processing events each frame:
+        # -------------------------
+        # TURN HANDLING
+        # -------------------------
         if gs.current_team == "PLAYER":
             if len(acted_units) == len(gs.get_units_for_team("PLAYER")):
                 gs.end_turn()
                 acted_units.clear()
+                selected_unit = None
+                move_tiles = []
+                attack_targets = []
 
-                # Enemy AI turn
-                simple_enemy_turn(gs)
-                gs.end_turn()
+        elif gs.current_team == "ENEMY":
+            enemy, move_to, target = simple_enemy_turn(gs)
+
+            if enemy and move_to:
+                old_pos = (enemy.x, enemy.y)
+                gs.apply_move(enemy, move_to[0], move_to[1])
+                renderer.animate_slide(enemy, old_pos, move_to)
+
+                while renderer.update_animations():
+                    renderer.draw()
+                    pygame.display.flip()
+                    clock.tick(60)
+
+            if enemy and target:
+                for _ in range(4):
+                    renderer.draw()
+                    pygame.draw.rect(
+                        renderer.screen,
+                        (255, 0, 0),
+                        pygame.Rect(target.x*64, target.y*64, 64, 64),
+                        4
+                    )
+                    pygame.display.flip()
+                    pygame.time.delay(120)
+
+                gs.apply_attack(enemy, target)
+
+            gs.end_turn()
 
 
+        # -------------------------
         # GAME OVER CHECK
+        # -------------------------
         if gs.is_terminal():
             renderer.draw()
             renderer.draw_game_over(gs.winner())
@@ -129,10 +191,15 @@ def main():
             running = False
             continue
 
+        # -------------------------
+        # DRAW
+        # -------------------------
+        if gs.current_team == "PLAYER":
+            renderer.draw(move_tiles, [(t.x, t.y) for t in attack_targets])
+        else:
+            renderer.draw()
 
-        renderer.draw(move_tiles, [(t.x, t.y) for t in attack_targets])
-
-
+        pygame.display.flip()
 
     pygame.quit()
 

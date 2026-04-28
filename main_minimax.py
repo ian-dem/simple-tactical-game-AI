@@ -1,5 +1,5 @@
 import pygame
-from game.game_state import GameState
+from game.game_state import GameState, generate_initial_gamestate
 from game.renderer import Renderer
 from game.ai_minimax import minimax, NODE_COUNT, evaluate_root_actions
 from game.ai_simple import simple_enemy_turn
@@ -9,9 +9,11 @@ from game.unit import Unit, UnitClass
 def main():
     pygame.init()
     gs = GameState()
+    generate_initial_gamestate(gs, width=8, height=8)
     renderer = Renderer(gs)
 
-    # Add units (same as your human version)
+    '''
+    # add units for now 
     gs.add_unit(Unit("PLAYER", UnitClass.SWORD), 1, 1)
     gs.add_unit(Unit("ENEMY", UnitClass.AXE), 5, 5)
     gs.add_unit(Unit("PLAYER", UnitClass.SPEAR), 1, 3)
@@ -20,6 +22,8 @@ def main():
     # add obstacles 
     for x in range(0, 6):
         gs.add_obstacle(x, 4)
+    '''
+
 
     clock = pygame.time.Clock()
 

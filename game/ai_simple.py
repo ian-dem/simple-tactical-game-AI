@@ -40,8 +40,9 @@ def simple_enemy_turn(gs):
     path = astar(gs, (enemy.x, enemy.y), goal)
 
     if path and len(path) > 0:
-        # path[0] is the next tile to step into
-        nx, ny = path[0]
+        # move up to enemy.move_range steps along the path
+        steps = min(enemy.move_range, len(path))
+        nx, ny = path[steps - 1]
         gs.apply_move(enemy, nx, ny)
             
         
