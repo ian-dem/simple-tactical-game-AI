@@ -1,3 +1,7 @@
+
+from game.pathfinding import astar
+
+
 def simple_enemy_turn(gs):
     enemies = gs.get_units_for_team("ENEMY")
     players = gs.get_units_for_team("PLAYER")
@@ -5,28 +9,40 @@ def simple_enemy_turn(gs):
     for enemy in enemies:
         if not enemy.is_alive():
             continue
-
-        # 1. Attack if possible
-        targets = gs.get_attackable_units(enemy)
-        if targets:
-            weakest = min(targets, key=lambda u: u.hp)
-            gs.apply_attack(enemy, weakest)
+        if enemy.has_moved and enemy.has_attacked:
             continue
 
-        # 2. Move toward nearest player
-        if not players:
-            return
+    moves = gs.get_legal_moves(enemy)
 
-        # Find nearest player
-        px, py = min(
-            [(p.x, p.y) for p in players],
-            key=lambda pos: abs(pos[0] - enemy.x) + abs(pos[1] - enemy.y)
-        )
+    best_move = None
+    best_target = None
 
-        # Move one step toward player
-        dx = 1 if px > enemy.x else -1 if px < enemy.x else 0
-        dy = 1 if py > enemy.y else -1 if py < enemy.y else 0
+    # find a move -> attack
+    for (mx, my) in moves:
+        # simulate move
+        tmp = gs.clone()
+        tmp_enemy = tmp.get_unit_at(enemy.x, enemy.y)
+        tmp.apply_move(tmp_enemy, mx, my)
 
-        nx, ny = enemy.x + dx, enemy.y + dy
-        if gs.in_bounds(nx, ny) and gs.get_unit_at(nx, ny) is None:
-            gs.apply_move(enemy, nx, ny)
+        # check attacks after moving
+        targets = tmp.get_attackable_units(tmp_enemy)
+
+        if targets:
+            # choose weakest target
+            t = min(targets, key=lambda u: u.hp)
+            # prefer moves that allow attacking
+            return enemy, (mx, my), t
+        
+    # simply move closer if cant attack
+    nearest = min(players, key=lambda p: abs(p.x - enemy.x) + abs(p.y - enemy.y))
+    goal = (nearest.x, nearest.y)
+
+    path = astar(gs, (enemy.x, enemy.y), goal)
+
+    if path and len(path) > 0:
+        # path[0] is the next tile to step into
+        nx, ny = path[0]
+        gs.apply_move(enemy, nx, ny)
+            
+        
+    return None, None, None

@@ -13,7 +13,12 @@ ADVANTAGE = {
 }
 
 class Unit:
+    _next_id = 0 
+
     def __init__(self, team, class_type, hp=10, strength=5, move_range=3, attack_range=1):
+        self.id = Unit._next_id 
+        Unit._next_id += 1
+
         self.team = team
         self.class_type = class_type
         self.hp = hp

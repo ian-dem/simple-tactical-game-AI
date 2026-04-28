@@ -61,7 +61,9 @@ def main():
 
                     # if clicked a legal move tile move
                     if (gx, gy) in move_tiles:
+                        old_pos = (selected_unit.x, selected_unit.y)
                         gs.apply_move(selected_unit, gx, gy)
+                        renderer.animate_slide(selected_unit, old_pos, (gx, gy))
                         attack_targets = gs.get_attackable_units(selected_unit)
                         move_tiles = []
                         turn_state = "ATTACK"
@@ -118,6 +120,14 @@ def main():
                 gs.end_turn()
 
 
+        # GAME OVER CHECK
+        if gs.is_terminal():
+            renderer.draw()
+            renderer.draw_game_over(gs.winner())
+            pygame.display.flip()
+            pygame.time.delay(2000)
+            running = False
+            continue
 
 
         renderer.draw(move_tiles, [(t.x, t.y) for t in attack_targets])
