@@ -98,7 +98,20 @@ class GameState:
         
 
     def clone(self):
-        return copy.deepcopy(self)
+        new = GameState(width=self.width, height=self.height)
+
+        # copy obstacles
+        new.obstacles = set(self.obstacles)
+
+        # copy units
+        new.units = [u.copy_shallow() for u in self.units]
+
+        # copy turn info
+        new.current_team = self.current_team
+
+        return new
+
+
 
     def is_terminal(self):
         player_alive = any(u.team == "PLAYER" and u.is_alive() for u in self.units)
@@ -196,7 +209,7 @@ class GameState:
 
 
 # game start function 
-def generate_initial_gamestate(gs, width=10, height=10, 
+def generate_initial_gamestate(gs, width=8, height=8, 
                                num_player_units=3, num_enemy_units=3,
                                obstacle_density=0.15,
                                HP_RANGE = (8, 16), STR_RANGE = (3, 7),
@@ -249,7 +262,10 @@ def generate_initial_gamestate(gs, width=10, height=10,
 
 
     # generate obstacles check if valid, reroll if not
-    while True: 
+    attempts = 0
+    while attempts < 100: 
+        attempts += 1
+        gs.obstacles.clear()
         for x in range(width):
             for y in range(height):
                 if x in player_cols or x in enemy_cols:
@@ -259,7 +275,9 @@ def generate_initial_gamestate(gs, width=10, height=10,
             
         if is_map_fully_connected(gs, width, height):
             break
-
+    
+    if attempts == 100:
+        raise RuntimeError("Failed to generate a connected map")
     
     # find empty tile
     def random_empty_tile(valid_cols):
