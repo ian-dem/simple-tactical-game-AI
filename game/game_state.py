@@ -141,6 +141,8 @@ class GameState:
         for u in units:
             if not u.is_alive():
                 continue
+            if u.has_moved and u.has_attacked:
+                continue
 
             moves = self.get_legal_moves(u)
             # include "no move" option (stay in place)
@@ -156,11 +158,11 @@ class GameState:
 
                 if targets:
                     for t in targets:
-                        actions.append(Action(unit=u,
+                        actions.append(Action(unit_id=u.id,
                                             move_to=(mx, my),
                                             attack_target_id=t.id))
                 else:
-                    actions.append(Action(unit=u,
+                    actions.append(Action(unit_id=u.id,
                                         move_to=(mx, my),
                                         attack_target_id=None))
         return actions
@@ -181,11 +183,13 @@ class GameState:
 
         if action.move_to:
             new_state.apply_move(cu, action.move_to[0], action.move_to[1])
+            cu.has_moved = True
 
         if action.attack_target_id is not None:
             target = new_state.get_unit_by_id(action.attack_target_id)
             if target is not None:
                 new_state.apply_attack(cu, target)
+                cu.has_attacked = True
 
         new_state.end_turn()
         return new_state

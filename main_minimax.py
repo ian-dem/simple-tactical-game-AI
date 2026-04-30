@@ -42,11 +42,12 @@ def main():
             # score, action = minimax(gs, depth=2, alpha=-9999, beta=9999, maximizing=True)
             root_evals = evaluate_root_actions(gs, depth=2)
             action, score = max(root_evals, key=lambda x: x[1])
+            unit = gs.get_unit_by_id(action.unit_id)
 
             # Draw debug info BEFORE executing the move
             renderer.draw()
             renderer.draw_minimax_heatmap(root_evals)
-            renderer.draw_minimax_debug(action, score, NODE_COUNT)
+            renderer.draw_minimax_debug(unit, action, score, NODE_COUNT)
             pygame.display.flip()
             pygame.time.delay(900)
 
@@ -93,29 +94,30 @@ def main():
 
         # ENEMY uses simple predictable AI
         elif gs.current_team == "ENEMY":
-            enemy, move_to, target = simple_enemy_turn(gs)
+            # Keep acting until no legal actions remain for ENEMY
+            while True:
+                actions = gs.generate_actions("ENEMY")
+                if not actions:
+                    break
 
-            if enemy and move_to:
-                old_pos = (enemy.x, enemy.y)
-                gs.apply_move(enemy, move_to[0], move_to[1])
-                renderer.animate_slide(enemy, old_pos, move_to)
+                # simple_enemy_turn returns (enemy_unit, move_to, target)
+                enemy_unit, move_to, target = simple_enemy_turn(gs)
 
-                while renderer.update_animations():
-                    renderer.draw()
-                    pygame.display.flip()
-                    clock.tick(60)
+                # If simple_enemy_turn couldn't find a valid action, fall back to first legal action
+                if enemy_unit is None or move_to is None:
+                    # convert first Action (which stores ids) into a concrete action to apply
+                    fallback = actions[0]
+                    gs = gs.apply_action(fallback)
+                    continue
 
-            if enemy and target:
-                # flash attack
-                for i in range(4):
-                    renderer.draw()
-                    pygame.draw.rect(renderer.screen, (255,0,0),
-                                    pygame.Rect(target.x*64, target.y*64, 64, 64), 4)
-                    pygame.display.flip()
-                    pygame.time.delay(120)
+                # Build Action object using ids only
+                attack_target_id = target.id if target is not None else None
+                action = Action(unit_id=enemy_unit.id, move_to=move_to, attack_target_id=attack_target_id)
 
-                gs.apply_attack(enemy, target)
+                # apply_action returns a new GameState
+                gs = gs.apply_action(action)
 
+            # End the enemy team turn after all units acted
             gs.end_turn()
 
 

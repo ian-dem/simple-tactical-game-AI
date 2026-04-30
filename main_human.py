@@ -3,13 +3,14 @@ from game.game_state import GameState, generate_initial_gamestate
 from game.unit import Unit, UnitClass
 from game.renderer import Renderer
 from game.ai_simple import simple_enemy_turn
+from game.actions import Action
 
 TILE_SIZE = 64
 
 def main():
     pygame.init()
     gs = GameState()
-    generate_initial_gamestate(gs, width=10, height=10)
+    generate_initial_gamestate(gs, width=8, height=8)
     renderer = Renderer(gs)
 
     '''
@@ -151,32 +152,30 @@ def main():
                 attack_targets = []
 
         elif gs.current_team == "ENEMY":
-            enemy, move_to, target = simple_enemy_turn(gs)
+            # Keep acting until no legal actions remain for ENEMY
+            while True:
+                actions = gs.generate_actions("ENEMY")
+                if not actions:
+                    break
 
-            if enemy and move_to:
-                old_pos = (enemy.x, enemy.y)
-                gs.apply_move(enemy, move_to[0], move_to[1])
-                renderer.animate_slide(enemy, old_pos, move_to)
+                # simple_enemy_turn returns (enemy_unit, move_to, target)
+                enemy_unit, move_to, target = simple_enemy_turn(gs)
 
-                while renderer.update_animations():
-                    renderer.draw()
-                    pygame.display.flip()
-                    clock.tick(60)
+                # If simple_enemy_turn couldn't find a valid action, fall back to first legal action
+                if enemy_unit is None or move_to is None:
+                    # convert first Action (which stores ids) into a concrete action to apply
+                    fallback = actions[0]
+                    gs = gs.apply_action(fallback)
+                    continue
 
-            if enemy and target:
-                for _ in range(4):
-                    renderer.draw()
-                    pygame.draw.rect(
-                        renderer.screen,
-                        (255, 0, 0),
-                        pygame.Rect(target.x*64, target.y*64, 64, 64),
-                        4
-                    )
-                    pygame.display.flip()
-                    pygame.time.delay(120)
+                # Build Action object using ids only
+                attack_target_id = target.id if target is not None else None
+                action = Action(unit_id=enemy_unit.id, move_to=move_to, attack_target_id=attack_target_id)
 
-                gs.apply_attack(enemy, target)
+                # apply_action returns a new GameState
+                gs = gs.apply_action(action)
 
+            # End the enemy team turn after all units acted
             gs.end_turn()
 
 

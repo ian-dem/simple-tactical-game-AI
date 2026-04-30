@@ -1,6 +1,7 @@
 # game renderer using pygame 
 # holds functions for rendering for each main file
 
+from game.game_state import GameState as gs
 import pygame
 
 TILE_SIZE = 64
@@ -94,14 +95,14 @@ class Renderer:
         pygame.display.flip()
 
 
-    def draw_minimax_debug(self, action, score, nodes):
+    def draw_minimax_debug(self, unit, action, score, nodes):
         if action is None:
             return
 
         # Draw move arrow
         if action.move_to:
-            sx = action.unit.x * TILE_SIZE + TILE_SIZE // 2
-            sy = action.unit.y * TILE_SIZE + TILE_SIZE // 2
+            sx = unit.x * TILE_SIZE + TILE_SIZE // 2
+            sy = unit.y * TILE_SIZE + TILE_SIZE // 2
             ex = action.move_to[0] * TILE_SIZE + TILE_SIZE // 2
             ey = action.move_to[1] * TILE_SIZE + TILE_SIZE // 2
             pygame.draw.line(self.screen, (255, 255, 0), (sx, sy), (ex, ey), 8)

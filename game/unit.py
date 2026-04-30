@@ -31,6 +31,10 @@ class Unit:
         self.x = x
         self.y = y
 
+        self.has_moved = False 
+        self.has_attacked = False
+
+
     def is_alive(self):
         return self.hp > 0
     
@@ -53,9 +57,8 @@ class Unit:
             strength=self.strength,
             x=self.x,
             y=self.y,
-            id=self.id,          
+            id=self.id
         )
         new_u.has_moved = self.has_moved
         new_u.has_attacked = self.has_attacked
-        
         return new_u
