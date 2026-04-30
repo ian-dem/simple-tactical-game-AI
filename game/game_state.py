@@ -19,9 +19,9 @@ class GameState:
         self.units.append(unit)
 
     def get_unit_at(self, x, y):
-        for u in self.units:
-            if u.x == x and u.y == y and u.is_alive():
-                return u
+        for unit in self.units:
+            if unit.x == x and unit.y == y and unit.is_alive():
+                return unit
         return None
 
     def in_bounds(self, x, y):
@@ -68,6 +68,7 @@ class GameState:
                     visited.add((nx, ny))
                     queue.append(((nx, ny), dist + 1))
 
+        legal.append((unit.x, unit.y))
         return legal
 
     def get_attackable_units(self, unit):
@@ -83,6 +84,8 @@ class GameState:
     def apply_move(self, unit, x, y):
         unit.x = x
         unit.y = y
+        unit.has_moved = True
+        unit.has_attacked = True # hack maybe
 
     def apply_attack(self, attacker, defender):
         modifier = 1.0
@@ -95,7 +98,7 @@ class GameState:
         counter_damage = int(0.8 * defender.strength / modifier)
         defender.hp = max(0, defender.hp - damage)
         attacker.hp = max(0, attacker.hp - counter_damage)
-        
+        attacker.has_attacked = True
 
     def clone(self):
         new = GameState(width=self.width, height=self.height)
@@ -104,13 +107,17 @@ class GameState:
         new.obstacles = set(self.obstacles)
 
         # copy units
-        new.units = [u.copy_shallow() for u in self.units]
+        new.units = [u.copy() for u in self.units]
+
+        for i, u in enumerate(new.units):
+            if not hasattr(u, "x") or not hasattr(u, "is_alive"):
+                raise RuntimeError(f"clone produced non-Unit at index {i}: {type(u)}")
 
         # copy turn info
         new.current_team = self.current_team
 
         return new
-
+        
 
 
     def is_terminal(self):
@@ -150,17 +157,19 @@ class GameState:
             for (mx, my) in moves:
                 # simulate move in a cloned state to compute attacks
                 tmp = self.clone()
-                cu = tmp.get_unit_at(u.x, u.y)
+                cu = tmp.get_unit_by_id(u.id)
+                if cu is None: #m a p f a i l  e d 
+                    continue 
                 tmp.apply_move(cu, mx, my)
                 targets = tmp.get_attackable_units(cu)
 
                 if targets:
                     for t in targets:
-                        actions.append(Action(unit=u,
+                        actions.append(Action(unit_id=u.id,
                                             move_to=(mx, my),
                                             attack_target_id=t.id))
                 else:
-                    actions.append(Action(unit=u,
+                    actions.append(Action(unit_id=u.id,
                                         move_to=(mx, my),
                                         attack_target_id=None))
         return actions

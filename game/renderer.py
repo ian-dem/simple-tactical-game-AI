@@ -115,8 +115,8 @@ class Renderer:
         # Draw text
         text1 = self.font.render(f"Minimax Score: {score}", True, (255,255,0))
         text2 = self.font.render(f"Nodes: {nodes}", True, (255,255,0))
-        self.screen.blit(text1, (10, 10))
-        self.screen.blit(text2, (10, 40))
+        self.screen.blit(text1, (10, 40))
+        self.screen.blit(text2, (10, 70))
 
     def draw_minimax_heatmap(self, action_scores):
         if not action_scores:

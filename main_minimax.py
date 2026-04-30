@@ -91,8 +91,15 @@ def main():
             # end turn
             gs.end_turn()
 
-        # ENEMY uses simple predictable AI
+        # -------------------------
+        # ENEMY PHASE
+        # -------------------------
         elif gs.current_team == "ENEMY":
+            while True:
+                actions = gs.generate_actions("ENEMY")
+                if not actions:
+                    break
+
             enemy, move_to, target = simple_enemy_turn(gs)
 
             if enemy and move_to:
@@ -104,19 +111,27 @@ def main():
                     renderer.draw()
                     pygame.display.flip()
                     clock.tick(60)
+            else: 
+                fallback = actions[0]
+                gs = gs.apply_action(fallback)
+                continue
 
             if enemy and target:
-                # flash attack
-                for i in range(4):
+                for _ in range(4):
                     renderer.draw()
-                    pygame.draw.rect(renderer.screen, (255,0,0),
-                                    pygame.Rect(target.x*64, target.y*64, 64, 64), 4)
+                    pygame.draw.rect(
+                        renderer.screen,
+                        (255, 0, 0),
+                        pygame.Rect(target.x*64, target.y*64, 64, 64),
+                        4
+                    )
                     pygame.display.flip()
                     pygame.time.delay(120)
 
                 gs.apply_attack(enemy, target)
 
             gs.end_turn()
+
 
 
         # GAME OVER CHECK

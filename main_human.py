@@ -2,14 +2,15 @@ import pygame
 from game.game_state import GameState, generate_initial_gamestate
 from game.unit import Unit, UnitClass
 from game.renderer import Renderer
-from game.ai_simple import simple_enemy_turn
+from game.ai_simple import enemy_phase
+from game.actions import Action
 
 TILE_SIZE = 64
 
 def main():
     pygame.init()
     gs = GameState()
-    generate_initial_gamestate(gs, width=10, height=10)
+    generate_initial_gamestate(gs, width=8, height=8)
     renderer = Renderer(gs)
 
     '''
@@ -150,34 +151,11 @@ def main():
                 move_tiles = []
                 attack_targets = []
 
+        # -------------------------
+        # ENEMY PHASE
+        # -------------------------
         elif gs.current_team == "ENEMY":
-            enemy, move_to, target = simple_enemy_turn(gs)
-
-            if enemy and move_to:
-                old_pos = (enemy.x, enemy.y)
-                gs.apply_move(enemy, move_to[0], move_to[1])
-                renderer.animate_slide(enemy, old_pos, move_to)
-
-                while renderer.update_animations():
-                    renderer.draw()
-                    pygame.display.flip()
-                    clock.tick(60)
-
-            if enemy and target:
-                for _ in range(4):
-                    renderer.draw()
-                    pygame.draw.rect(
-                        renderer.screen,
-                        (255, 0, 0),
-                        pygame.Rect(target.x*64, target.y*64, 64, 64),
-                        4
-                    )
-                    pygame.display.flip()
-                    pygame.time.delay(120)
-
-                gs.apply_attack(enemy, target)
-
-            gs.end_turn()
+            enemy_phase(gs, renderer=renderer, clock=clock, animate=True)
 
 
         # -------------------------
