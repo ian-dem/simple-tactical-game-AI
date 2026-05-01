@@ -98,7 +98,7 @@ class Renderer:
         if action is None:
             return
 
-        # Draw move arrow
+        # move arrow
         if action.move_to:
             unit = self.state.get_unit_by_id(action.unit_id)
             sx = unit.x * TILE_SIZE + TILE_SIZE // 2
@@ -107,7 +107,7 @@ class Renderer:
             ey = action.move_to[1] * TILE_SIZE + TILE_SIZE // 2
             pygame.draw.line(self.screen, (255, 255, 0), (sx, sy), (ex, ey), 8)
 
-        # Draw attack highlight
+        # attack highlight
         if action.attack_target_id is not None:
             target = self.state.get_unit_by_id(action.attack_target_id)
             rect = pygame.Rect(target.x*TILE_SIZE, target.y*TILE_SIZE, TILE_SIZE, TILE_SIZE)

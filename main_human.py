@@ -41,7 +41,7 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            # Only process mouse input on PLAYER turn
+            # only process mouse input on PLAYER turn
             if gs.current_team != "PLAYER":
                 continue
 

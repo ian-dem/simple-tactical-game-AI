@@ -36,7 +36,7 @@ def _choose_attack_move_for_enemy(gs, enemy):
 
 
 
-    # Fallback random legal move
+    # fallback random legal move
     if moves:
         mx, my = random.choice(list(moves))
         return (mx, my), None
@@ -60,13 +60,13 @@ def enemy_phase(gs, renderer=None, clock=None, animate=True):
         gs.end_turn()
         return True
 
-    # Loop until no actions remain for ENEMY
+    # go until no actions remain for ENEMY
     while True:
         actions = gs.generate_actions("ENEMY")
         if not actions:
             break
 
-        # Find an enemy that can act (respect has_moved/has_attacked flags)
+        # find an enemy that hasn't moved/attacked
         acted_any = False
         for enemy in enemies:
             if not enemy.is_alive():
@@ -84,7 +84,7 @@ def enemy_phase(gs, renderer=None, clock=None, animate=True):
             
             
 
-            # If move_to equals current position and no target treat as skip
+            # if move_to equals current position and no target treat as skip
             if (move_to[0], move_to[1]) == (enemy.x, enemy.y) and target is None:
                 # fallback to an Action if generate_actions returned something else
                 # pick first available action for this enemy
@@ -126,12 +126,11 @@ def enemy_phase(gs, renderer=None, clock=None, animate=True):
 
                 gs.apply_attack(enemy, target)
 
-            # Mark that this enemy acted (the GameState should track a unit has_moved/has_attacked if needed)
+            # mark that this enemy acted (this is internal for this loop to not get stuck)
             acted_any = True
-            break  # recompute actions after each unit acts
+            break  
 
         if not acted_any:
-            # No enemy could act this iteration; break to avoid infinite loop
             break
 
     gs.end_turn()

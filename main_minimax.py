@@ -57,7 +57,7 @@ def main():
             continue
 
 
-        # Draw normally
+        # draw normally
         renderer.draw()
 
     pygame.quit()
