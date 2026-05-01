@@ -100,8 +100,9 @@ class Renderer:
 
         # Draw move arrow
         if action.move_to:
-            sx = action.unit.x * TILE_SIZE + TILE_SIZE // 2
-            sy = action.unit.y * TILE_SIZE + TILE_SIZE // 2
+            unit = self.state.get_unit_by_id(action.unit_id)
+            sx = unit.x * TILE_SIZE + TILE_SIZE // 2
+            sy = unit.y * TILE_SIZE + TILE_SIZE // 2
             ex = action.move_to[0] * TILE_SIZE + TILE_SIZE // 2
             ey = action.move_to[1] * TILE_SIZE + TILE_SIZE // 2
             pygame.draw.line(self.screen, (255, 255, 0), (sx, sy), (ex, ey), 8)

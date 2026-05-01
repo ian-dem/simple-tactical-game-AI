@@ -148,6 +148,9 @@ class GameState:
         for u in units:
             if not u.is_alive():
                 continue
+            if u.has_moved:
+                continue 
+            
 
             moves = self.get_legal_moves(u)
             # include "no move" option (stay in place)
